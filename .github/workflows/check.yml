@@ -1,0 +1,25 @@
+name: Controllo build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Avvio di prova del server
+        run: |
+          TOKEN=ci_token_1234567890_abcdefghij DATA_DIR=$RUNNER_TEMP/data node --disable-warning=ExperimentalWarning server/server.mjs &
+          sleep 2
+          curl -fsS http://127.0.0.1:8787/health
