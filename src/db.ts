@@ -47,6 +47,14 @@ export interface Recurring {
   active: boolean
 }
 
+/** Saldo del conto corrente a una certa data (salvato in meta, chiave `accountBalance`) */
+export interface AccountBalance {
+  /** Saldo in centesimi (può essere negativo) */
+  amount: number
+  /** Data del saldo (YYYY-MM-DD): le spese con data successiva lo riducono */
+  date: string
+}
+
 export interface Meta {
   key: string
   value: unknown
