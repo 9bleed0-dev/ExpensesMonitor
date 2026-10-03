@@ -1,5 +1,7 @@
 # Server sul telefono (e accesso di Claude)
 
+> Prima installazione? Segui la checklist in [SETUP.md](SETUP.md).
+
 Il server gira in **Termux** sul telefono Android. L'app continua a funzionare offline come prima,
 ma si sincronizza con il server; Claude legge e modifica i dati tramite un **connettore MCP**
 raggiungibile attraverso un tunnel. I dati restano solo sul telefono (database SQLite + backup giornalieri).

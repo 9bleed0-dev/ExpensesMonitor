@@ -50,7 +50,7 @@ npm run preview   # anteprima della build
 
 Facoltativo: un server Node senza dipendenze (`server/`) gira in Termux sul telefono, l'app si sincronizza con lui
 e Claude gestisce i dati tramite un connettore MCP. Si riavvia da solo (runit, watchdog, Termux:Boot) e fa backup giornalieri.
-Guida completa: [docs/TELEFONO.md](docs/TELEFONO.md).
+Setup passo passo: [docs/SETUP.md](docs/SETUP.md) · Come funziona: [docs/TELEFONO.md](docs/TELEFONO.md).
 
 ## Installarla sul telefono
 
