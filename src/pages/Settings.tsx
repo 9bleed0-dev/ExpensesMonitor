@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { Card, SectionTitle, staggerContainer } from '../components/Card'
 import { CategoryIcon, ICONS } from '../components/CategoryIcon'
+import { SyncSettings } from '../components/SyncSettings'
 import { useToast } from '../components/Toast'
 import { Button, Field, Input } from '../components/ui'
 import { db, exportData, importData, PAYMENT_METHODS, resetData, setMeta, type AccountBalance, type Category } from '../db'
@@ -282,6 +283,8 @@ export function SettingsPage() {
           )}
         </AnimatePresence>
       </Card>
+
+      <SyncSettings />
 
       <Card>
         <SectionTitle>Dati & backup</SectionTitle>

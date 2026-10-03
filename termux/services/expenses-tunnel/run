@@ -1,0 +1,19 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Tunnel pubblico verso il server (per Claude). Si ricollega da solo quando torna la rete;
+# se il processo cade, runit lo riavvia.
+exec 2>&1
+. "$HOME/.expenses-monitor/env"
+case "$TUNNEL" in
+  ngrok)
+    # ngrok è un binario Linux: in Termux serve resolv.conf, fornito con proot
+    exec proot -b "$PREFIX/etc/resolv.conf:/etc/resolv.conf" \
+      "$HOME/.local/bin/ngrok" http "127.0.0.1:$PORT" --url="$NGROK_DOMAIN" --log=stdout --log-format=logfmt
+    ;;
+  cloudflared)
+    exec cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN"
+    ;;
+  *)
+    echo "Nessun tunnel configurato (TUNNEL vuoto in ~/.expenses-monitor/env)"
+    exec sleep 3600
+    ;;
+esac

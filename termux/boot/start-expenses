@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Termux:Boot: all'accensione del telefono tiene sveglio Termux e avvia i servizi (runit).
+termux-wake-lock
+. "$PREFIX/etc/profile"

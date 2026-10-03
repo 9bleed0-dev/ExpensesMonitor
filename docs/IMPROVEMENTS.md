@@ -72,5 +72,6 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 ## 4. Dati e affidabilità
 
 - 💡 **Backup automatico periodico**: promemoria se l'ultimo backup è più vecchio di 30 giorni (il dato `lastBackup` è già salvato).
+- ✅ **Server sul telefono** (Termux) con sincronizzazione dell'app, backup giornalieri e connettore MCP per Claude: vedi [TELEFONO.md](TELEFONO.md).
 - 💡 **Sincronizzazione tra dispositivi** opzionale e cifrata end-to-end, per esempio su un file in Google Drive o iCloud scelto dall'utente.
 - 💡 **Test automatici** (Vitest) per la logica di ricorrenze, formattazione e import, eseguiti in CI prima del deploy.
