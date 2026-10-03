@@ -62,7 +62,8 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 - ✅ Banner bollette scadute o in scadenza entro 7 giorni, con badge sulla scheda.
 - ✅ Note e metodo di pagamento; suggerimenti automatici dallo storico.
 - ✅ Ricerca su tutti i mesi; confronto anno su anno nel riepilogo annuale.
-- 💡 **Entrate e saldo netto** mensile e annuale.
+- ✅ **Saldo conto stimato**: saldo inserito a mano a una data (Opzioni) meno le spese registrate dopo, mostrato in Home.
+- 💡 **Entrate e saldo netto** mensile e annuale (renderebbe il saldo conto preciso anche con le entrate).
 - 💡 **Allegati**: foto dello scontrino o PDF della bolletta, salvati in IndexedDB.
 - 💡 **Etichette** libere (es. "vacanze 2026", "auto") oltre alle categorie.
 - 💡 **Obiettivi di risparmio**.

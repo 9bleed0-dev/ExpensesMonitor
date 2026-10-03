@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useSyncExternalStore } from 'react'
-import { db, getMeta, type Category, type Expense } from '../db'
+import { db, getMeta, type AccountBalance, type Category, type Expense } from '../db'
 import { addDays, monthKey, monthRange, shiftMonth, todayISO } from './format'
 import { dueItemsForMonth } from './recurring'
 import { themed, useTheme, type Theme } from './theme'
@@ -34,6 +34,21 @@ export function useRecurring() {
 
 export function useBudget() {
   return useLiveQuery(() => getMeta<number>('monthlyBudget', 0), [], 0)
+}
+
+/**
+ * Saldo del conto: valore inserito a mano a una data, meno le spese registrate dopo quella data.
+ * Le spese dello stesso giorno sono escluse (di solito sono già nel saldo della banca).
+ * `undefined` durante il caricamento, `null` se il saldo non è impostato.
+ */
+export function useAccountBalance() {
+  return useLiveQuery(async () => {
+    const base = await getMeta<AccountBalance | null>('accountBalance', null)
+    if (!base) return null
+    const after = await db.expenses.where('date').above(base.date).toArray()
+    const spentSince = after.reduce((s, e) => s + e.amount, 0)
+    return { base, spentSince, count: after.length, current: base.amount - spentSince }
+  }, [])
 }
 
 export const sumAmounts = (items: { amount: number }[] | undefined) => (items ?? []).reduce((s, e) => s + e.amount, 0)
