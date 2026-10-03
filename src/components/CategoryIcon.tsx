@@ -4,6 +4,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { Category } from '../db'
+import { useTheme } from '../lib/theme'
 
 export const ICONS: Record<string, LucideIcon> = {
   Zap, House, ShoppingCart, Car, Utensils, Tv, HeartPulse, Shield, Sparkles, Landmark, Ellipsis, Flame, Droplet,
@@ -13,10 +14,18 @@ export const ICONS: Record<string, LucideIcon> = {
 export function CategoryIcon({ category, size = 40 }: { category?: Category; size?: number }) {
   const Icon = ICONS[category?.icon ?? 'Ellipsis'] ?? Ellipsis
   const color = category?.color ?? '#94a3b8'
+  // Sul chiaro il glifo è scurito per restare leggibile (≥ 3:1) anche con le tinte più chiare
+  const light = useTheme().theme === 'light'
   return (
     <span
       className="grid shrink-0 place-items-center rounded-2xl"
-      style={{ width: size, height: size, background: `${color}26`, color, boxShadow: `inset 0 0 0 1px ${color}40` }}
+      style={{
+        width: size,
+        height: size,
+        background: `${color}${light ? '22' : '26'}`,
+        color: light ? `color-mix(in oklab, ${color} 72%, black)` : color,
+        boxShadow: `inset 0 0 0 1px ${color}40`,
+      }}
     >
       <Icon size={size * 0.48} strokeWidth={2.2} />
     </span>

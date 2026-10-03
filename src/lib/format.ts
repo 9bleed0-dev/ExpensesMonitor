@@ -45,3 +45,50 @@ export const formatShortDate = (iso: string) => {
   const [yy, mm, dd] = iso.split('-').map(Number)
   return new Date(yy, mm - 1, dd).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
 }
+
+/** Espressione semplice tipo "12,50+3+4,20-1" -> centesimi (NaN se non valida) */
+export function evaluateAmount(expr: string): number {
+  const s = expr.replace(/\s/g, '').replace(/−/g, '-')
+  if (!s) return NaN
+  const terms = s.match(/[+-]?[^+-]+/g)
+  if (!terms || terms.join('') !== s) return NaN
+  let total = 0
+  for (const t of terms) {
+    const sign = t.startsWith('-') ? -1 : 1
+    const v = parseAmount(t.replace(/^[+-]/, ''))
+    if (!Number.isFinite(v)) return NaN
+    total += sign * v
+  }
+  return total
+}
+
+export const hasOperator = (expr: string) => /[0-9,.][+−-]/.test(expr)
+
+export function addDays(iso: string, n: number) {
+  const [yy, mm, dd] = iso.split('-').map(Number)
+  return toISODate(new Date(yy, mm - 1, dd + n))
+}
+
+/** Sposta un periodo {year, month} di d mesi */
+export function shiftMonth(p: { year: number; month: number }, d: number) {
+  const m = p.month + d
+  return { year: p.year + Math.floor(m / 12), month: ((m % 12) + 12) % 12 }
+}
+
+/** Giorni da `from` a `to` (date ISO), positivo se `to` è dopo */
+export function daysBetween(from: string, to: string) {
+  const [a, b] = [from, to].map((iso) => {
+    const [yy, mm, dd] = iso.split('-').map(Number)
+    return Date.UTC(yy, mm - 1, dd)
+  })
+  return Math.round((b - a) / 86_400_000)
+}
+
+export function relativeDue(dueDate: string, today = todayISO()) {
+  const d = daysBetween(today, dueDate)
+  if (d === 0) return 'scade oggi'
+  if (d === 1) return 'scade domani'
+  if (d > 1) return `tra ${d} giorni`
+  if (d === -1) return 'scaduta ieri'
+  return `scaduta da ${-d} giorni`
+}
