@@ -1,5 +1,13 @@
 import Dexie, { type EntityTable } from 'dexie'
 
+export type PaymentMethod = 'cash' | 'card' | 'transfer'
+
+export const PAYMENT_METHODS: Record<PaymentMethod, string> = {
+  cash: 'Contanti',
+  card: 'Carta',
+  transfer: 'Bonifico',
+}
+
 export type Frequency = 'monthly' | 'bimonthly' | 'quarterly' | 'semiannual' | 'yearly'
 
 export interface Category {
@@ -8,6 +16,8 @@ export interface Category {
   color: string
   icon: string
   order: number
+  /** Budget mensile opzionale della categoria, in centesimi */
+  budget?: number
 }
 
 export interface Expense {
@@ -19,6 +29,9 @@ export interface Expense {
   /** Data in formato YYYY-MM-DD */
   date: string
   recurringId?: number
+  /** Metodo di pagamento (opzionale) */
+  method?: PaymentMethod
+  note?: string
   createdAt: number
 }
 
@@ -46,6 +59,7 @@ export const db = new Dexie('expenses-monitor') as Dexie & {
   meta: EntityTable<Meta, 'key'>
 }
 
+// Nota: note, method e budget di categoria sono campi non indicizzati, quindi non serve una nuova versione dello schema.
 db.version(1).stores({
   expenses: '++id, date, categoryId, recurringId',
   recurring: '++id, categoryId',

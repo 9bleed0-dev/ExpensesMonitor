@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { db, type Frequency, type Recurring } from '../db'
 import { centsToInput, parseAmount, todayISO } from '../lib/format'
 import { useCategories } from '../lib/hooks'
+import { haptic } from '../lib/haptics'
 import { FREQUENCIES } from '../lib/recurring'
 import { CategoryPicker } from './CategoryPicker'
-import { Button, Field, Input, Select } from './ui'
+import { Button, Field, Input, Select, Toggle } from './ui'
 
 export function RecurringForm({ initial, onDone }: { initial?: Partial<Recurring>; onDone: () => void }) {
   const { list: categories } = useCategories()
@@ -24,6 +25,7 @@ export function RecurringForm({ initial, onDone }: { initial?: Partial<Recurring
     const data = { name: name.trim(), amount: cents, categoryId, frequency, startDate, active }
     if (initial?.id != null) await db.recurring.update(initial.id, data)
     else await db.recurring.add(data)
+    haptic('success')
     onDone()
   }
 
@@ -57,10 +59,10 @@ export function RecurringForm({ initial, onDone }: { initial?: Partial<Recurring
         <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
       </Field>
       <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} />
-      <label className="flex cursor-pointer items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
+      <div className="flex items-center justify-between rounded-2xl bg-fg/5 px-4 py-3">
         <span className="font-medium">Attiva</span>
-        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-5 w-5 accent-violet-500" />
-      </label>
+        <Toggle checked={active} onChange={setActive} label="Attiva" />
+      </div>
       <div className="flex gap-3 pt-1">
         {initial?.id != null && (
           <Button type="button" variant="danger" onClick={remove} aria-label="Elimina">
