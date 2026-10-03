@@ -42,13 +42,20 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 
 ## 2. Grafica e fluidità
 
-- 🔨 Lavoro in corso sul branch di sviluppo: tema chiaro/scuro, gesti di swipe, tastierino numerico, micro-animazioni. Aggiornare questa sezione a lavoro concluso.
+- ✅ Tema chiaro/scuro/sistema con palette adattata per tema.
+- ✅ Swipe sulle spese (sinistra elimina con "Annulla", destra duplica) e swipe tra mesi/anni.
+- ✅ Tastierino stile calcolatrice con somme e sottrazioni.
+- ✅ Header compatto allo scroll, toast, skeleton, stati vuoti illustrati, vibrazioni leggere.
 - 💡 Haptics più ricchi su Android (Vibration API) per conferme e cancellazioni.
 - 💡 Icona e splash screen PNG dedicati per iOS (`apple-touch-icon`), oltre all'SVG.
 
 ## 3. Funzionalità
 
-- 🔨 In valutazione nel lavoro in corso: budget per categoria, insights e previsione di fine mese, avviso bollette in scadenza, note e metodo di pagamento, ricerca globale, suggerimenti automatici.
+- ✅ Budget per categoria con avvisi all'80% e oltre.
+- ✅ Stima di fine mese, media giornaliera e scheda "Approfondimenti".
+- ✅ Banner bollette scadute o in scadenza entro 7 giorni, con badge sulla scheda.
+- ✅ Note e metodo di pagamento; suggerimenti automatici dallo storico.
+- ✅ Ricerca su tutti i mesi; confronto anno su anno nel riepilogo annuale.
 - 💡 **Entrate e saldo netto** mensile e annuale.
 - 💡 **Allegati**: foto dello scontrino o PDF della bolletta, salvati in IndexedDB.
 - 💡 **Etichette** libere (es. "vacanze 2026", "auto") oltre alle categorie.
