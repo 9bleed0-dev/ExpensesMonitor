@@ -3,6 +3,11 @@
 Backlog delle idee per Expenses Monitor. Ogni voce ha uno stato:
 `💡 proposta` · `🔨 in corso` · `✅ fatto` · `❌ scartata`
 
+## Contesto d'uso
+- Uso **solo personale**, un solo utente.
+- Dispositivo principale: **telefono Android** (PWA installata da Chrome).
+- Banca: **BCC** (Banca di Credito Cooperativo). Da chiarire il gruppo e l'app di home banking (Iccrea / Cassa Centrale / Raiffeisen) e il formato di esportazione dei movimenti.
+
 Per aggiungere un'idea: crea una voce nella sezione giusta con stato, descrizione breve e, se serve, note tecniche.
 
 ---
@@ -18,7 +23,8 @@ Importare gli estratti conto scaricati dall'home banking e da PayPal (*Attività
 - Riconoscimento automatico dei pagamenti delle bollette ricorrenti (segna "pagata").
 - Anteprima prima della conferma, con possibilità di escludere righe.
 - Costo 0, sforzo basso-medio. È l'unico metodo che copre con certezza PayPal con un conto personale.
-- **Da decidere:** quale banca supportare per prima (serve un file di esempio, anche con importi anonimizzati).
+- **Prima banca da supportare: BCC.** Serve un file di esempio dei movimenti esportato dall'home banking (anche con importi anonimizzati) per scrivere il parser.
+- Su Android: aggiungere la PWA come **destinazione di condivisione** (Web Share Target), così il file scaricato si può "Condividere" direttamente verso l'app.
 
 ### 1.2 Sincronizzazione automatica con la banca (Enable Banking) — 💡 proposta · priorità media
 Collegamento in **sola lettura** tramite open banking PSD2.
@@ -60,7 +66,7 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 - 💡 **Allegati**: foto dello scontrino o PDF della bolletta, salvati in IndexedDB.
 - 💡 **Etichette** libere (es. "vacanze 2026", "auto") oltre alle categorie.
 - 💡 **Obiettivi di risparmio**.
-- 💡 **Notifiche** locali per le bollette in scadenza (dove supportate dalle PWA).
+- 💡 **Notifiche** per le bollette in scadenza: su Android le PWA installate da Chrome supportano le notifiche.
 
 ## 4. Dati e affidabilità
 
