@@ -3,12 +3,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { Card, SectionTitle, staggerContainer } from '../components/Card'
 import { CategoryIcon, ICONS } from '../components/CategoryIcon'
+import { SyncSettings } from '../components/SyncSettings'
 import { useToast } from '../components/Toast'
 import { Button, Field, Input } from '../components/ui'
-import { db, exportData, importData, PAYMENT_METHODS, resetData, setMeta, type Category } from '../db'
+import { db, exportData, importData, PAYMENT_METHODS, resetData, setMeta, type AccountBalance, type Category } from '../db'
 import { centsToInput, formatEur, parseAmount, todayISO } from '../lib/format'
 import { haptic } from '../lib/haptics'
-import { useBudget, useCategories } from '../lib/hooks'
+import { useAccountBalance, useBudget, useCategories } from '../lib/hooks'
 import { themed, useTheme, type ThemePref } from '../lib/theme'
 
 const SWATCHES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767', '#b07cf0', '#a87b4f', '#8a8a85']
@@ -25,10 +26,36 @@ export function SettingsPage() {
   const { theme, pref, setPref } = useTheme()
   const toast = useToast()
   const [budgetInput, setBudgetInput] = useState('')
+  const balance = useAccountBalance()
+  const [balanceInput, setBalanceInput] = useState('')
+  const [balanceDate, setBalanceDate] = useState(todayISO())
   const [editing, setEditing] = useState<(Category & { budgetInput: string }) | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => setBudgetInput(budget ? centsToInput(budget) : ''), [budget])
+  useEffect(() => {
+    if (!balance) return
+    setBalanceInput(centsToInput(balance.base.amount))
+    setBalanceDate(balance.base.date)
+  }, [balance?.base.amount, balance?.base.date])
+
+  async function saveBalance() {
+    const s = balanceInput.trim()
+    const neg = s.startsWith('-')
+    const cents = parseAmount(s.replace(/^-/, ''))
+    if (!s || !Number.isFinite(cents) || !/^\d{4}-\d{2}-\d{2}$/.test(balanceDate)) return toast({ text: 'Saldo o data non validi' })
+    const value: AccountBalance = { amount: neg ? -cents : cents, date: balanceDate }
+    await setMeta('accountBalance', value)
+    haptic('success')
+    toast({ text: 'Saldo salvato ✓' })
+  }
+
+  async function removeBalance() {
+    await db.meta.delete('accountBalance')
+    setBalanceInput('')
+    setBalanceDate(todayISO())
+    toast({ text: 'Saldo rimosso' })
+  }
 
   const edit = (c: Category) => setEditing({ ...c, budgetInput: c.budget ? centsToInput(c.budget) : '' })
 
@@ -145,6 +172,31 @@ export function SettingsPage() {
       </Card>
 
       <Card>
+        <SectionTitle>Saldo conto</SectionTitle>
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+          <Field label="Saldo">
+            <Input inputMode="decimal" placeholder="es. 2500,00" value={balanceInput} onChange={(e) => setBalanceInput(e.target.value)} className="tabular" />
+          </Field>
+          <Field label="Alla data">
+            <Input type="date" value={balanceDate} max={todayISO()} onChange={(e) => setBalanceDate(e.target.value)} />
+          </Field>
+          <div className="flex items-end gap-2">
+            {balance && (
+              <Button variant="ghost" onClick={removeBalance} aria-label="Rimuovi saldo">
+                <Trash2 size={18} />
+              </Button>
+            )}
+            <Button className="flex-1" onClick={saveBalance}>
+              Salva
+            </Button>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-faint">
+          Copia il saldo dall'home banking. In Home vedrai il saldo stimato, meno le spese registrate dopo questa data. Le entrate non sono conteggiate: aggiornalo quando arriva lo stipendio.
+        </p>
+      </Card>
+
+      <Card>
         <SectionTitle
           action={
             <button
@@ -231,6 +283,8 @@ export function SettingsPage() {
           )}
         </AnimatePresence>
       </Card>
+
+      <SyncSettings />
 
       <Card>
         <SectionTitle>Dati & backup</SectionTitle>

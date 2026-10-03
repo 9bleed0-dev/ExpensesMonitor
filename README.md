@@ -46,6 +46,12 @@ npm run build     # build di produzione in dist/
 npm run preview   # anteprima della build
 ```
 
+## Server sul telefono e accesso di Claude
+
+Facoltativo: un server Node senza dipendenze (`server/`) gira in Termux sul telefono, l'app si sincronizza con lui
+e Claude gestisce i dati tramite un connettore MCP. Si riavvia da solo (runit, watchdog, Termux:Boot) e fa backup giornalieri.
+Setup passo passo: [docs/SETUP.md](docs/SETUP.md) · Come funziona: [docs/TELEFONO.md](docs/TELEFONO.md).
+
 ## Installarla sul telefono
 
 Il workflow `.github/workflows/deploy.yml` pubblica l'app su GitHub Pages a ogni push su `main`

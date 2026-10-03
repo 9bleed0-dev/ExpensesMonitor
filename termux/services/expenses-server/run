@@ -1,0 +1,5 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Server Expenses Monitor. runit lo riavvia da solo se si ferma.
+exec 2>&1
+. "$HOME/.expenses-monitor/env"
+exec node --disable-warning=ExperimentalWarning "$REPO_DIR/server/server.mjs"

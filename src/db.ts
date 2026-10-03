@@ -47,9 +47,23 @@ export interface Recurring {
   active: boolean
 }
 
+/** Saldo del conto corrente a una certa data (salvato in meta, chiave `accountBalance`) */
+export interface AccountBalance {
+  /** Saldo in centesimi (può essere negativo) */
+  amount: number
+  /** Data del saldo (YYYY-MM-DD): le spese con data successiva lo riducono */
+  date: string
+}
+
 export interface Meta {
   key: string
   value: unknown
+}
+
+/** Ultima versione sincronizzata di ogni riga (`tabella:chiave` → JSON), per calcolare cosa inviare al server */
+export interface SyncShadow {
+  id: string
+  json: string
 }
 
 export const db = new Dexie('expenses-monitor') as Dexie & {
@@ -57,6 +71,7 @@ export const db = new Dexie('expenses-monitor') as Dexie & {
   recurring: EntityTable<Recurring, 'id'>
   categories: EntityTable<Category, 'id'>
   meta: EntityTable<Meta, 'key'>
+  syncShadow: EntityTable<SyncShadow, 'id'>
 }
 
 // Nota: note, method e budget di categoria sono campi non indicizzati, quindi non serve una nuova versione dello schema.
@@ -66,6 +81,9 @@ db.version(1).stores({
   categories: 'id, order',
   meta: 'key',
 })
+
+// v2: tabella di appoggio per la sincronizzazione col server sul telefono (le altre tabelle restano invariate)
+db.version(2).stores({ syncShadow: 'id' })
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'bollette', name: 'Bollette', color: '#c98500', icon: 'Zap', order: 0 },

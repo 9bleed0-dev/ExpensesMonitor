@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarDays, Check, Flame, Gauge, ReceiptText, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Landmark, CalendarDays, Check, Flame, Gauge, ReceiptText, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react'
 import { useMemo } from 'react'
 import type { AppActions } from '../App'
@@ -12,7 +12,7 @@ import { ThemeToggle } from '../components/ThemeToggle'
 import { EmptyState, Skeleton } from '../components/ui'
 import { UpcomingBills } from '../components/UpcomingBills'
 import { daysInMonth, formatEur, formatShortDate, MONTHS, shiftMonth, todayISO } from '../lib/format'
-import { byCategory, sumAmounts, toSlices, useBudget, useCategories, useMonthExpenses, useRecurring } from '../lib/hooks'
+import { byCategory, sumAmounts, toSlices, useAccountBalance, useBudget, useCategories, useMonthExpenses, useRecurring } from '../lib/hooks'
 import { categoryBudgets, categoryChanges, monthStats } from '../lib/insights'
 import { dueItemsForMonth, payDate } from '../lib/recurring'
 import { useTheme } from '../lib/theme'
@@ -105,6 +105,8 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
         </header>
 
         <UpcomingBills openExpense={openExpense} />
+
+        <BalanceCard onEdit={() => goTo('settings')} />
 
         <SwipePeriod ordinal={year * 12 + month} onPrev={() => setPeriod(shiftMonth(period, -1))} onNext={() => setPeriod(shiftMonth(period, 1))}>
           <div className="grid gap-4 md:grid-cols-5">
@@ -385,6 +387,31 @@ function Insights({
           </AnimatePresence>
         </ul>
       )}
+    </Card>
+  )
+}
+
+/** Saldo del conto stimato: saldo inserito meno le spese registrate dopo quella data */
+function BalanceCard({ onEdit }: { onEdit: () => void }) {
+  const balance = useAccountBalance()
+  if (!balance) return null
+  const { base, spentSince, count, current } = balance
+  return (
+    <Card className="flex items-center gap-4">
+      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent">
+        <Landmark size={20} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-medium text-muted">Saldo conto stimato</div>
+        <div className={`text-2xl font-extrabold tracking-tight ${current < 0 ? 'text-bad' : ''}`}>
+          <AnimatedNumber value={current} />
+        </div>
+        <div className="truncate text-xs text-faint">
+          {formatEur(base.amount)} al {formatShortDate(base.date)}
+          {count > 0 && ` · −${formatEur(spentSince)} di spese dopo`}
+        </div>
+      </div>
+      <LinkBtn onClick={onEdit}>Aggiorna</LinkBtn>
     </Card>
   )
 }

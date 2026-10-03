@@ -1,0 +1,29 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Self-healing: ogni minuto controlla server e tunnel e li riavvia se non rispondono.
+exec 2>&1
+. "$HOME/.expenses-monitor/env"
+server_fail=0
+tunnel_fail=0
+while true; do
+  sleep 60
+  termux-wake-lock >/dev/null 2>&1
+
+  if curl -fsS -m 10 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then
+    server_fail=0
+  else
+    server_fail=$((server_fail + 1))
+    echo "server non risponde ($server_fail)"
+    [ "$server_fail" -ge 2 ] && { echo "riavvio server"; sv restart expenses-server; server_fail=0; }
+  fi
+
+  # Il tunnel si controlla solo se c'è rete: senza campo è normale che non risponda
+  if [ -n "$TUNNEL" ] && [ -n "$PUBLIC_URL" ] && curl -fsS -m 10 -o /dev/null https://1.1.1.1 2>/dev/null; then
+    if curl -fsS -m 15 "$PUBLIC_URL/health" >/dev/null 2>&1; then
+      tunnel_fail=0
+    else
+      tunnel_fail=$((tunnel_fail + 1))
+      echo "tunnel non risponde ($tunnel_fail)"
+      [ "$tunnel_fail" -ge 3 ] && { echo "riavvio tunnel"; sv restart expenses-tunnel; tunnel_fail=0; }
+    fi
+  fi
+done

@@ -62,7 +62,8 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 - ✅ Banner bollette scadute o in scadenza entro 7 giorni, con badge sulla scheda.
 - ✅ Note e metodo di pagamento; suggerimenti automatici dallo storico.
 - ✅ Ricerca su tutti i mesi; confronto anno su anno nel riepilogo annuale.
-- 💡 **Entrate e saldo netto** mensile e annuale.
+- ✅ **Saldo conto stimato**: saldo inserito a mano a una data (Opzioni) meno le spese registrate dopo, mostrato in Home.
+- 💡 **Entrate e saldo netto** mensile e annuale (renderebbe il saldo conto preciso anche con le entrate).
 - 💡 **Allegati**: foto dello scontrino o PDF della bolletta, salvati in IndexedDB.
 - 💡 **Etichette** libere (es. "vacanze 2026", "auto") oltre alle categorie.
 - 💡 **Obiettivi di risparmio**.
@@ -71,5 +72,6 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 ## 4. Dati e affidabilità
 
 - 💡 **Backup automatico periodico**: promemoria se l'ultimo backup è più vecchio di 30 giorni (il dato `lastBackup` è già salvato).
+- ✅ **Server sul telefono** (Termux) con sincronizzazione dell'app, backup giornalieri e connettore MCP per Claude: vedi [TELEFONO.md](TELEFONO.md).
 - 💡 **Sincronizzazione tra dispositivi** opzionale e cifrata end-to-end, per esempio su un file in Google Drive o iCloud scelto dall'utente.
 - 💡 **Test automatici** (Vitest) per la logica di ricorrenze, formattazione e import, eseguiti in CI prima del deploy.
