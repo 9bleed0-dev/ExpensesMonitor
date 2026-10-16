@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { ImportSource } from './lib/importer'
 
 export type PaymentMethod = 'cash' | 'card' | 'transfer'
 
@@ -32,6 +33,10 @@ export interface Expense {
   /** Metodo di pagamento (opzionale) */
   method?: PaymentMethod
   note?: string
+  /** Da dove arriva la spesa, se importata da un estratto conto */
+  source?: ImportSource
+  /** Data|importo|descrizione originale: evita di importare due volte la stessa riga */
+  importKey?: string
   createdAt: number
 }
 
@@ -45,6 +50,8 @@ export interface Recurring {
   /** Prima scadenza (YYYY-MM-DD): definisce giorno e mese di partenza */
   startDate: string
   active: boolean
+  /** Chiave della descrizione bancaria con cui riconoscerla negli import (vedi normalizeDesc) */
+  matchKey?: string
 }
 
 export interface Meta {
@@ -59,7 +66,8 @@ export const db = new Dexie('expenses-monitor') as Dexie & {
   meta: EntityTable<Meta, 'key'>
 }
 
-// Nota: note, method e budget di categoria sono campi non indicizzati, quindi non serve una nuova versione dello schema.
+// Nota: note, method, source, importKey, matchKey e budget di categoria sono campi non indicizzati,
+// quindi non serve una nuova versione dello schema.
 db.version(1).stores({
   expenses: '++id, date, categoryId, recurringId',
   recurring: '++id, categoryId',

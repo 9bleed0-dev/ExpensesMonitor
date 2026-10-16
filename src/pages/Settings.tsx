@@ -1,6 +1,7 @@
-import { Download, Monitor, Moon, Plus, Sun, Trash2, Upload } from 'lucide-react'
+import { Download, FileUp, Monitor, Moon, Plus, Sun, Trash2, Upload } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
+import type { AppActions } from '../App'
 import { Card, SectionTitle, staggerContainer } from '../components/Card'
 import { CategoryIcon, ICONS } from '../components/CategoryIcon'
 import { useToast } from '../components/Toast'
@@ -19,7 +20,7 @@ const THEMES: { id: ThemePref; label: string; icon: typeof Sun }[] = [
   { id: 'dark', label: 'Scuro', icon: Moon },
 ]
 
-export function SettingsPage() {
+export function SettingsPage({ openImport }: AppActions) {
   const budget = useBudget()
   const { raw: categories, map } = useCategories()
   const { theme, pref, setPref } = useTheme()
@@ -230,6 +231,16 @@ export function SettingsPage() {
             </motion.div>
           )}
         </AnimatePresence>
+      </Card>
+
+      <Card>
+        <SectionTitle>Importa movimenti</SectionTitle>
+        <p className="mb-4 text-sm text-muted">
+          Carica l'estratto conto della banca o l'attività di PayPal in CSV: le spese entrano con la categoria proposta, le bollette in scadenza risultano pagate e le spese che si ripetono compaiono in Bollette.
+        </p>
+        <Button className="w-full" onClick={openImport}>
+          <FileUp size={18} /> Importa un file CSV
+        </Button>
       </Card>
 
       <Card>

@@ -1,4 +1,5 @@
-import { CalendarCheck, Check, Pause, ReceiptText } from 'lucide-react'
+import { CalendarCheck, Check, Pause, ReceiptText, Sparkles } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import type { AppActions } from '../App'
@@ -7,8 +8,11 @@ import { Card, SectionTitle, staggerContainer } from '../components/Card'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { PeriodNav, SwipePeriod } from '../components/MonthNav'
 import { EmptyState } from '../components/ui'
+import { db, getMeta, setMeta, type Expense } from '../db'
 import { formatEur, formatShortDate, MONTHS, shiftMonth, todayISO } from '../lib/format'
+import { haptic } from '../lib/haptics'
 import { useCategories, useMonthExpenses, useRecurring } from '../lib/hooks'
+import { detectRecurring, recurringKey, type RecurringCandidate } from '../lib/importer'
 import { dueItemsForMonth, FREQUENCIES, monthlyEquivalent, payDate } from '../lib/recurring'
 
 export function RecurringPage({ period, setPeriod, openExpense, openRecurring }: AppActions) {
@@ -23,6 +27,23 @@ export function RecurringPage({ period, setPeriod, openExpense, openRecurring }:
   const today = todayISO()
 
   const shift = (d: number) => setPeriod(shiftMonth(period, d))
+
+  // Spese che si ripetono ma non sono ancora una ricorrenza (di solito arrivano dagli import)
+  const allExpenses = useLiveQuery(() => db.expenses.toArray(), [], [] as Expense[])
+  const ignored = useLiveQuery(() => getMeta<string[]>('ignoredRecurring', []), [], [] as string[])
+  const candidates = useMemo(
+    () => detectRecurring(allExpenses, new Set([...recurring.map(recurringKey), ...ignored])),
+    [allExpenses, recurring, ignored],
+  )
+
+  async function adopt(c: RecurringCandidate) {
+    await db.transaction('rw', db.recurring, db.expenses, async () => {
+      const id = await db.recurring.add({ name: c.name, amount: c.amount, categoryId: c.categoryId, frequency: c.frequency, startDate: c.firstDate, active: true, matchKey: c.key })
+      // le spese passate risultano pagamenti della nuova ricorrenza
+      await db.expenses.bulkUpdate(c.expenseIds.map((key) => ({ key, changes: { recurringId: id } })))
+    })
+    haptic('success')
+  }
 
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
@@ -110,6 +131,46 @@ export function RecurringPage({ period, setPeriod, openExpense, openRecurring }:
           </ul>
         )}
       </Card>
+
+      {candidates.length > 0 && (
+        <Card>
+          <SectionTitle>Trovate nelle tue spese</SectionTitle>
+          <p className="-mt-2 mb-3 text-sm text-muted">Si ripetono a intervalli regolari: aggiungile per vedere le scadenze e il costo fisso.</p>
+          <ul className="space-y-1">
+            <AnimatePresence initial={false}>
+              {candidates.map((c) => (
+                <motion.li key={c.key} layout exit={{ opacity: 0, height: 0 }} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl p-2">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent">
+                    <Sparkles size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold">{c.name}</div>
+                    <div className="truncate text-xs text-muted">
+                      <span className="tabular font-semibold text-ink">
+                        {c.variable ? '≈ ' : ''}
+                        {formatEur(c.amount)}
+                      </span>{' '}
+                      · {FREQUENCIES[c.frequency].label.toLowerCase()} · {c.count} volte · ultima {formatShortDate(c.lastDate)}
+                    </div>
+                  </div>
+                  <div className="flex w-full justify-end gap-1 sm:w-auto">
+                  <button onClick={() => setMeta('ignoredRecurring', [...ignored, c.key])} className="h-9 rounded-full px-3 text-sm font-semibold text-muted hover:text-ink" aria-label={`Ignora ${c.name}`}>
+                    Ignora
+                  </button>
+                  <motion.button
+                    whileTap={{ scale: 0.88 }}
+                    onClick={() => adopt(c)}
+                    className="h-9 rounded-full bg-gradient-to-r from-violet-500 to-cyan-500 px-4 text-sm font-semibold text-white light:from-violet-600 light:to-cyan-600"
+                  >
+                    Aggiungi
+                  </motion.button>
+                  </div>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        </Card>
+      )}
 
       <Card>
         <SectionTitle>Tutte le ricorrenze</SectionTitle>

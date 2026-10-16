@@ -11,6 +11,7 @@ Tutto resta **sul tuo dispositivo** (local-first, nessun server, nessun account)
 - **Inserimento rapido** – tastierino stile calcolatrice su telefono (somme e sottrazioni: `12,50+4`), suggerimenti dallo storico che compilano descrizione, categoria e importo, data "Oggi/Ieri" con un tocco, **metodo di pagamento** (contanti, carta, bonifico) e **nota** facoltativi. Su desktop il tasto <kbd>N</kbd> apre una nuova spesa.
 - **Spese** – lista raggruppata per giorno, ricerca (descrizione, nota, categoria) anche **in tutti i mesi**, filtro per categoria. Scorri una spesa a sinistra per eliminarla (con **Annulla**), a destra per **duplicarla** oggi; su desktop le stesse azioni compaiono al passaggio del mouse.
 - **Bollette & ricorrenti** – luce, gas, affitto, Netflix… con frequenza mensile/bimestrale/trimestrale/semestrale/annuale. Ogni mese vedi cosa scade, cosa è scaduto e con "Paga" registri l'importo reale (le bollette variano!). Costo fisso medio mensile e annuale.
+- **Import da banca e PayPal** – carica l'estratto conto o l'attività PayPal in CSV (*Opzioni → Importa movimenti*): colonne riconosciute e ricordate per ogni banca, righe già importate saltate, categoria proposta dallo storico e da regole (modificabile riga per riga), bollette in scadenza segnate come pagate. In *Bollette* l'app propone le spese che si ripetono (abbonamenti, affitto, utenze) da aggiungere come ricorrenti.
 - **Riepilogo annuale** – totale, media mensile, mese più caro, confronto con l'anno precedente anche **mese per mese** (barre affiancate), categorie dell'anno.
 - **Opzioni** – tema chiaro/scuro/sistema, budget mensile, categorie personalizzabili (nome, colore, icona, budget), backup/ripristino JSON, esportazione CSV (con metodo e nota), reset.
 
@@ -44,6 +45,7 @@ npm install
 npm run dev       # sviluppo su http://localhost:5173
 npm run build     # build di produzione in dist/
 npm run preview   # anteprima della build
+npm test          # prove della logica di import (Node 23.6 o successivo)
 ```
 
 ## Installarla sul telefono

@@ -3,6 +3,7 @@ import { AnimatePresence, motion, MotionConfig } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Background } from './components/Background'
 import { ExpenseForm } from './components/ExpenseForm'
+import { ImportFlow } from './components/ImportFlow'
 import { Nav, TABS, type TabId } from './components/Nav'
 import { RecurringForm } from './components/RecurringForm'
 import { Sheet } from './components/Sheet'
@@ -25,10 +26,13 @@ export interface AppActions {
   setPeriod: (p: Period) => void
   openExpense: (initial?: Partial<Expense>) => void
   openRecurring: (initial?: Partial<Recurring>) => void
+  openImport: () => void
   goTo: (tab: TabId) => void
 }
 
-type SheetState = ({ kind: 'expense'; initial?: Partial<Expense> } | { kind: 'recurring'; initial?: Partial<Recurring> }) & { nonce: number } | null
+type SheetState =
+  | ({ kind: 'expense'; initial?: Partial<Expense> } | { kind: 'recurring'; initial?: Partial<Recurring> } | { kind: 'import'; initial?: undefined }) & { nonce: number }
+  | null
 
 export default function App() {
   const now = new Date()
@@ -59,6 +63,10 @@ export default function App() {
       setSheet({ kind: 'recurring', initial, nonce: Date.now() })
       setSheetOpen(true)
     },
+    openImport: () => {
+      setSheet({ kind: 'import', nonce: Date.now() })
+      setSheetOpen(true)
+    },
     goTo: (t) => {
       setTab(t)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -83,7 +91,7 @@ export default function App() {
     expenses: <Expenses {...actions} />,
     recurring: <RecurringPage {...actions} />,
     year: <YearPage {...actions} />,
-    settings: <SettingsPage />,
+    settings: <SettingsPage {...actions} />,
   }
 
   return (
@@ -139,6 +147,9 @@ export default function App() {
       </Sheet>
       <Sheet open={sheetOpen && sheet?.kind === 'recurring'} onClose={close} title={sheet?.initial?.id != null ? 'Modifica ricorrenza' : 'Nuova ricorrenza'}>
         {sheet?.kind === 'recurring' && <RecurringForm key={sheet.nonce} initial={sheet.initial} onDone={close} />}
+      </Sheet>
+      <Sheet open={sheetOpen && sheet?.kind === 'import'} onClose={close} title="Importa estratto conto">
+        {sheet?.kind === 'import' && <ImportFlow key={sheet.nonce} onDone={close} onShowRecurring={() => actions.goTo('recurring')} />}
       </Sheet>
       </ToastProvider>
     </MotionConfig>

@@ -14,7 +14,14 @@ Per aggiungere un'idea: crea una voce nella sezione giusta con stato, descrizion
 
 ## 1. Import movimenti da banca e PayPal
 
-### 1.1 Import da file CSV / Excel — 💡 proposta · priorità **alta**
+### 1.1 Import da file CSV / Excel — 🔨 in corso · priorità **alta**
+**Fatto (ottobre 2026):** import CSV da banca e PayPal in *Opzioni → Importa movimenti* (`src/lib/importer.ts`, `src/components/ImportFlow.tsx`):
+riga dei titoli e colonne riconosciute da sole (anche Dare/Avere) e ricordate per ogni banca, deduplica, categoria proposta dallo storico
+e da regole, scelta della categoria riga per riga, bollette in scadenza segnate pagate, ricariche PayPal e pagamenti PayPal dell'estratto
+conto saltati, entrate saltate. In *Bollette* la scheda "Trovate nelle tue spese" propone le spese che si ripetono. Test: `npm test`.
+**Manca:** file `.xlsx`, parser provato su un vero CSV della BCC, Web Share Target, esclusione manuale di singole righe.
+
+Idea di partenza:
 Importare gli estratti conto scaricati dall'home banking e da PayPal (*Attività → Estratti conto → CSV*).
 - Parser lato browser (nessun server, massima privacy), anche per file `.xlsx`.
 - Mappatura colonne guidata (data, descrizione, importo, segno) **salvata per banca**, così la seconda volta è automatica.
