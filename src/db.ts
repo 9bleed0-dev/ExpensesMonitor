@@ -54,6 +54,20 @@ export interface Recurring {
   matchKey?: string
 }
 
+/** Entrata (stipendio, rimborso, regalo…): tabella a parte, così i conteggi delle spese restano invariati */
+export interface Income {
+  id?: number
+  /** Importo in centesimi, positivo */
+  amount: number
+  description: string
+  /** Data in formato YYYY-MM-DD */
+  date: string
+  note?: string
+  source?: ImportSource
+  importKey?: string
+  createdAt: number
+}
+
 export interface Meta {
   key: string
   value: unknown
@@ -64,6 +78,7 @@ export const db = new Dexie('expenses-monitor') as Dexie & {
   recurring: EntityTable<Recurring, 'id'>
   categories: EntityTable<Category, 'id'>
   meta: EntityTable<Meta, 'key'>
+  incomes: EntityTable<Income, 'id'>
 }
 
 // Nota: note, method, source, importKey, matchKey e budget di categoria sono campi non indicizzati,
@@ -74,6 +89,8 @@ db.version(1).stores({
   categories: 'id, order',
   meta: 'key',
 })
+// v2: entrate
+db.version(2).stores({ incomes: '++id, date' })
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'bollette', name: 'Bollette', color: '#c98500', icon: 'Zap', order: 0 },
@@ -103,24 +120,26 @@ export function setMeta(key: string, value: unknown) {
   return db.meta.put({ key, value })
 }
 
-/** Backup completo del database in JSON */
+/** Backup completo del database in JSON (versione 2: con le entrate) */
 export async function exportData() {
-  const [expenses, recurring, categories, meta] = await Promise.all([
+  const [expenses, incomes, recurring, categories, meta] = await Promise.all([
     db.expenses.toArray(),
+    db.incomes.toArray(),
     db.recurring.toArray(),
     db.categories.toArray(),
     db.meta.toArray(),
   ])
-  return { app: 'expenses-monitor', version: 1, exportedAt: new Date().toISOString(), expenses, recurring, categories, meta }
+  return { app: 'expenses-monitor', version: 2, exportedAt: new Date().toISOString(), expenses, incomes, recurring, categories, meta }
 }
 
-export async function importData(data: Awaited<ReturnType<typeof exportData>>) {
+export async function importData(data: Omit<Awaited<ReturnType<typeof exportData>>, 'incomes'> & { incomes?: Income[] }) {
   if (data?.app !== 'expenses-monitor') throw new Error('File di backup non valido')
-  await db.transaction('rw', [db.expenses, db.recurring, db.categories, db.meta], async () => {
-    await Promise.all([db.expenses.clear(), db.recurring.clear(), db.categories.clear(), db.meta.clear()])
+  await db.transaction('rw', [db.expenses, db.incomes, db.recurring, db.categories, db.meta], async () => {
+    await Promise.all([db.expenses.clear(), db.incomes.clear(), db.recurring.clear(), db.categories.clear(), db.meta.clear()])
     await db.categories.bulkAdd(data.categories)
     await db.recurring.bulkAdd(data.recurring)
     await db.expenses.bulkAdd(data.expenses)
+    await db.incomes.bulkAdd(data.incomes ?? []) // i backup della versione 1 non hanno entrate
     await db.meta.bulkAdd(data.meta)
   })
 }

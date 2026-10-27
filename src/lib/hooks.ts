@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useSyncExternalStore } from 'react'
-import { db, getMeta, type Category, type Expense } from '../db'
+import { db, getMeta, type Category, type Expense, type Income } from '../db'
 import { addDays, monthKey, monthRange, shiftMonth, todayISO } from './format'
 import { dueItemsForMonth } from './recurring'
 import { themed, useTheme, type Theme } from './theme'
@@ -22,6 +22,28 @@ export function useMonthExpenses(year: number, month: number) {
     const [start, end] = monthRange(year, month)
     return db.expenses.where('date').between(start, end, true, true).reverse().sortBy('date')
   }, [year, month])
+}
+
+export function useMonthIncomes(year: number, month: number) {
+  return useLiveQuery(() => {
+    const [start, end] = monthRange(year, month)
+    return db.incomes.where('date').between(start, end, true, true).reverse().sortBy('date')
+  }, [year, month], [] as Income[])
+}
+
+export function useYearIncomes(year: number) {
+  return useLiveQuery(() => db.incomes.where('date').between(`${year}-01-01`, `${year}-12-31`, true, true).toArray(), [year], [] as Income[])
+}
+
+/** Categorie ordinate per uso nelle ultime ~200 spese (le più usate prima), poi nell'ordine scelto */
+export function useCategoriesByUse() {
+  const { list } = useCategories()
+  const recent = useLiveQuery(() => db.expenses.orderBy('date').reverse().limit(200).toArray(), [], [] as Expense[])
+  return useMemo(() => {
+    const uses = new Map<string, number>()
+    for (const e of recent) uses.set(e.categoryId, (uses.get(e.categoryId) ?? 0) + 1)
+    return [...list].sort((a, b) => (uses.get(b.id) ?? 0) - (uses.get(a.id) ?? 0) || a.order - b.order)
+  }, [list, recent])
 }
 
 export function useYearExpenses(year: number) {

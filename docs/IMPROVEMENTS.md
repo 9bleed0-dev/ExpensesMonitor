@@ -55,6 +55,10 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 
 ## 2. Grafica e fluidità
 
+- ✅ Home riordinata: bollette in una sola scheda, entrate e saldo nel riquadro principale, niente percentuali assurde.
+- ✅ Più leggera sul telefono: cambio scheda più rapido e senza sfocatura, sfondo fermo, vetro meno sfocato, niente animazioni continue.
+- ✅ Inserimento: categorie ordinate per uso, "Annulla" subito dopo aver aggiunto.
+
 - ✅ Tema chiaro/scuro/sistema con palette adattata per tema.
 - ✅ Swipe sulle spese (sinistra elimina con "Annulla", destra duplica) e swipe tra mesi/anni.
 - ✅ Tastierino stile calcolatrice con somme e sottrazioni.
@@ -69,7 +73,7 @@ La Transaction Search API di PayPal funziona solo con un **account Business**. C
 - ✅ Banner bollette scadute o in scadenza entro 7 giorni, con badge sulla scheda.
 - ✅ Note e metodo di pagamento; suggerimenti automatici dallo storico.
 - ✅ Ricerca su tutti i mesi; confronto anno su anno nel riepilogo annuale.
-- 💡 **Entrate e saldo netto** mensile e annuale.
+- ✅ **Entrate e saldo** del mese (Home, Spese, modulo Spesa/Entrata, import CSV, backup). 💡 Manca il riepilogo annuale delle entrate.
 - 💡 **Allegati**: foto dello scontrino o PDF della bolletta, salvati in IndexedDB.
 - 💡 **Etichette** libere (es. "vacanze 2026", "auto") oltre alle categorie.
 - 💡 **Obiettivi di risparmio**.

@@ -1,4 +1,4 @@
-import { Globe, ReceiptText, Search, SearchX, X } from 'lucide-react'
+import { Globe, ReceiptText, Search, SearchX, Wallet, X } from 'lucide-react'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import type { AppActions } from '../App'
@@ -7,13 +7,14 @@ import { ExpenseRow } from '../components/ExpenseRow'
 import { PeriodNav, SwipePeriod } from '../components/MonthNav'
 import { EmptyState, Skeleton } from '../components/ui'
 import type { Expense } from '../db'
-import { formatDayLabel, formatEur, MONTHS, shiftMonth } from '../lib/format'
+import { formatDayLabel, formatEur, formatShortDate, MONTHS, shiftMonth } from '../lib/format'
 import { haptic } from '../lib/haptics'
-import { sumAmounts, useCategories, useMonthExpenses, useSearchAll } from '../lib/hooks'
+import { sumAmounts, useCategories, useMonthExpenses, useMonthIncomes, useSearchAll } from '../lib/hooks'
 
-export function Expenses({ period, setPeriod, openExpense }: AppActions) {
+export function Expenses({ period, setPeriod, openExpense, openIncome }: AppActions) {
   const { year, month } = period
   const expenses = useMonthExpenses(year, month)
+  const incomes = useMonthIncomes(year, month)
   const { list: categories, map } = useCategories()
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<string | null>(null)
@@ -132,6 +133,26 @@ export function Expenses({ period, setPeriod, openExpense }: AppActions) {
       )}
 
       <SwipePeriod ordinal={year * 12 + month} onPrev={() => !global && setPeriod(shiftMonth(period, -1))} onNext={() => !global && setPeriod(shiftMonth(period, 1))}>
+        {!global && !query && !cat && incomes.length > 0 && (
+          <section className="glass mb-4 rounded-[1.75rem] p-3">
+            <div className="flex items-center justify-between px-2 pt-1 pb-2 text-xs font-semibold tracking-wide text-muted uppercase">
+              <span>Entrate</span>
+              <span className="tabular text-good">+{formatEur(sumAmounts(incomes))}</span>
+            </div>
+            {incomes.map((i) => (
+              <button key={i.id} onClick={() => openIncome(i)} className="flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left hover:bg-fg/5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-good/15 text-good">
+                  <Wallet size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{i.description || 'Entrata'}</span>
+                  <span className="block text-xs text-muted">{formatShortDate(i.date)}</span>
+                </span>
+                <span className="tabular font-bold text-good">+{formatEur(i.amount)}</span>
+              </button>
+            ))}
+          </section>
+        )}
         {loading ? (
           <div className="glass space-y-3 rounded-[1.75rem] p-4">
             {[0, 1, 2, 3].map((i) => (

@@ -1,7 +1,7 @@
 import { ChevronDown, FileUp, Receipt } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { db, getMeta, setMeta, type Expense, type Recurring } from '../db'
+import { db, getMeta, setMeta, type Expense, type Income, type Recurring } from '../db'
 import { formatEur, formatShortDate, shiftMonth } from '../lib/format'
 import { haptic } from '../lib/haptics'
 import { useCategories } from '../lib/hooks'
@@ -32,6 +32,7 @@ interface Loaded {
   headerIndex: number
   mapping: ColumnMapping
   expenses: Expense[]
+  incomeKeys: Set<string>
   recurring: Recurring[]
 }
 
@@ -67,9 +68,15 @@ export function ImportFlow({ onDone, onShowRecurring }: { onDone: () => void; on
     const headerIndex = findHeaderRow(rows)
     const headers = rows[headerIndex]
     if (looksLikePaypal(headers)) setSource('paypal')
-    const [expenses, recurring, saved] = await Promise.all([db.expenses.toArray(), db.recurring.toArray(), getMeta<Mappings>('importMappings', {})])
+    const [expenses, incomes, recurring, saved] = await Promise.all([
+      db.expenses.toArray(),
+      db.incomes.toArray(),
+      db.recurring.toArray(),
+      getMeta<Mappings>('importMappings', {}),
+    ])
+    const incomeKeys = new Set(incomes.map((i) => i.importKey).filter((k): k is string => !!k))
     setOverrides({})
-    setLoaded({ fileName: file.name, rows, headerIndex, mapping: saved[headerSignature(headers)] ?? guessMapping(headers), expenses, recurring })
+    setLoaded({ fileName: file.name, rows, headerIndex, mapping: saved[headerSignature(headers)] ?? guessMapping(headers), expenses, incomeKeys, recurring })
   }
 
   const preview = useMemo(() => {
@@ -80,13 +87,13 @@ export function ImportFlow({ onDone, onShowRecurring }: { onDone: () => void; on
       mapping: loaded.mapping,
       source,
       skipPaypalInBank: skipPaypal,
-      existingKeys: new Set(loaded.expenses.map((e) => e.importKey).filter((k): k is string => !!k)),
+      existingKeys: new Set([...loaded.expenses.map((e) => e.importKey).filter((k): k is string => !!k), ...loaded.incomeKeys]),
     })
     // Bollette già pagate per mese, per non segnare due volte la stessa scadenza
     const paid = new Set(loaded.expenses.filter((e) => e.recurringId != null).map((e) => `${e.recurringId}|${e.date.slice(0, 7)}`))
     const active = loaded.recurring.filter((r) => r.active)
     const ok = items
-      .filter((i) => !i.skip)
+      .filter((i) => !i.skip && !i.income)
       .sort((a, b) => a.date!.localeCompare(b.date!))
       .map((i) => {
         const [y, m] = i.date!.split('-').map(Number)
@@ -108,11 +115,18 @@ export function ImportFlow({ onDone, onShowRecurring }: { onDone: () => void; on
         return { ...i, bill, suggested }
       })
       .reverse()
-    return { ok, skipped: items.filter((i) => i.skip), total: ok.reduce((s, i) => s - i.amount!, 0) }
+    const incomes = items.filter((i) => !i.skip && i.income)
+    return {
+      ok,
+      incomes,
+      skipped: items.filter((i) => i.skip),
+      total: ok.reduce((s, i) => s - i.amount!, 0),
+      incomeTotal: incomes.reduce((s, i) => s + i.amount!, 0),
+    }
   }, [loaded, source, skipPaypal, categories])
 
   async function doImport() {
-    if (!loaded || !preview?.ok.length) return
+    if (!loaded || !preview || !(preview.ok.length || preview.incomes.length)) return
     setBusy(true)
     const now = Date.now()
     const rows: Expense[] = preview.ok.map((i, n) => {
@@ -129,11 +143,29 @@ export function ImportFlow({ onDone, onShowRecurring }: { onDone: () => void; on
         createdAt: now + n,
       }
     })
-    await db.expenses.bulkAdd(rows)
+    const incomes: Income[] = preview.incomes.map((i, n) => {
+      const description = prettyDesc(i.desc)
+      return {
+        amount: i.amount!,
+        description,
+        note: description.toLowerCase() !== i.desc.toLowerCase() ? i.desc : undefined,
+        date: i.date!,
+        source,
+        importKey: i.key,
+        createdAt: now + rows.length + n,
+      }
+    })
+    await db.transaction('rw', db.expenses, db.incomes, async () => {
+      await db.expenses.bulkAdd(rows)
+      await db.incomes.bulkAdd(incomes)
+    })
     const saved = await getMeta<Mappings>('importMappings', {})
     await setMeta('importMappings', { ...saved, [headerSignature(loaded.rows[loaded.headerIndex])]: loaded.mapping })
     haptic('success')
-    toast({ text: `Importate ${rows.length} spese ✓`, action: { label: 'Ricorrenti', onClick: onShowRecurring } })
+    toast({
+      text: `Importate ${rows.length} spese${incomes.length ? ` e ${incomes.length} entrate` : ''} ✓`,
+      action: { label: 'Ricorrenti', onClick: onShowRecurring },
+    })
     onDone()
   }
 
@@ -198,7 +230,7 @@ export function ImportFlow({ onDone, onShowRecurring }: { onDone: () => void; on
             <li>
               <b>PayPal</b>: paypal.com → Attività → Estratti conto → Scarica attività → formato <b>CSV</b>, tutte le transazioni.
             </li>
-            <li>Puoi importare più volte lo stesso periodo: le righe già presenti vengono saltate. Le entrate (stipendio, rimborsi) non vengono importate.</li>
+            <li>Puoi importare più volte lo stesso periodo: le righe già presenti vengono saltate. Le entrate (stipendio, rimborsi) finiscono tra le entrate.</li>
           </ul>
         </details>
       )}
@@ -233,7 +265,13 @@ export function ImportFlow({ onDone, onShowRecurring }: { onDone: () => void; on
 
           <div className="rounded-2xl bg-fg/5 p-4 text-sm">
             <p>
-              <b className="tabular">{preview.ok.length}</b> spese da importare · <b className="tabular">{formatEur(preview.total)}</b>
+              <b className="tabular">{preview.ok.length}</b> spese · <b className="tabular">{formatEur(preview.total)}</b>
+              {preview.incomes.length > 0 && (
+                <>
+                  {' '}
+                  e <b className="tabular">{preview.incomes.length}</b> entrate · <b className="tabular text-good">+{formatEur(preview.incomeTotal)}</b>
+                </>
+              )}
             </p>
             <p className="text-xs text-muted">
               {bills > 0 && `${bills} pagano una bolletta in scadenza · `}
@@ -291,8 +329,8 @@ export function ImportFlow({ onDone, onShowRecurring }: { onDone: () => void; on
             </div>
           )}
 
-          <Button className="w-full" disabled={!preview.ok.length || busy} onClick={doImport}>
-            <Receipt size={18} /> Importa {preview.ok.length} spese
+          <Button className="w-full" disabled={!(preview.ok.length || preview.incomes.length) || busy} onClick={doImport}>
+            <Receipt size={18} /> Importa {preview.ok.length + preview.incomes.length} movimenti
           </Button>
         </>
       )}

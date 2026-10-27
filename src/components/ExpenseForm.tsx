@@ -1,40 +1,51 @@
 import { CalendarDays, Copy, StickyNote, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-import { db, PAYMENT_METHODS, type Expense, type PaymentMethod } from '../db'
+import { db, PAYMENT_METHODS, type Expense, type Income, type PaymentMethod } from '../db'
 import { useExpenseActions } from '../lib/actions'
 import { addDays, centsToInput, evaluateAmount, formatEur, formatShortDate, hasOperator, todayISO } from '../lib/format'
 import { haptic } from '../lib/haptics'
-import { matchSuggestions, useCategories, useMediaQuery, useSuggestions, type Suggestion } from '../lib/hooks'
+import { matchSuggestions, useCategories, useCategoriesByUse, useMediaQuery, useSuggestions, type Suggestion } from '../lib/hooks'
 import { CategoryIcon } from './CategoryIcon'
 import { CategoryPicker } from './CategoryPicker'
 import { METHOD_ICONS } from './ExpenseRow'
 import { Keypad } from './Keypad'
+import { useToast } from './Toast'
 import { Button, Input } from './ui'
 
-export function ExpenseForm({ initial, onDone }: { initial?: Partial<Expense>; onDone: () => void }) {
-  const { list: categories, map } = useCategories()
+export type EntryKind = 'expense' | 'income'
+
+export function ExpenseForm({ initial, initialIncome, onDone }: { initial?: Partial<Expense>; initialIncome?: Partial<Income>; onDone: () => void }) {
+  const { map } = useCategories()
+  const categories = useCategoriesByUse()
+  const toast = useToast()
+  const [kind, setKind] = useState<EntryKind>(initialIncome ? 'income' : 'expense')
+  const isIncome = kind === 'income'
   const suggestions = useSuggestions()
   const { remove, duplicate } = useExpenseActions()
   // Su touch: tastierino calcolatrice; con mouse/tastiera: campo di testo (accetta comunque "12+3")
   const coarse = useMediaQuery('(pointer: coarse)')
   const narrow = useMediaQuery('(max-width: 640px)')
   const touch = coarse || (narrow && navigator.maxTouchPoints > 0)
-  const editing = initial?.id != null
+  const editing = initial?.id != null || initialIncome?.id != null
 
-  const [amount, setAmount] = useState(initial?.amount != null ? centsToInput(initial.amount).replace(/,00$/, '') : '')
-  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? 'spesa')
-  const [description, setDescription] = useState(initial?.description ?? '')
-  const [date, setDate] = useState(initial?.date ?? todayISO())
+  const startAmount = initialIncome?.amount ?? initial?.amount
+  const [amount, setAmount] = useState(startAmount != null ? centsToInput(startAmount).replace(/,00$/, '') : '')
+  // Nuova spesa: la categoria più usata di recente
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? '')
+  const category = categoryId || categories[0]?.id || 'altro'
+  const [description, setDescription] = useState(initialIncome?.description ?? initial?.description ?? '')
+  const [date, setDate] = useState(initialIncome?.date ?? initial?.date ?? todayISO())
   const [method, setMethod] = useState<PaymentMethod | undefined>(initial?.method)
-  const [note, setNote] = useState(initial?.note ?? '')
-  const [showNote, setShowNote] = useState(!!initial?.note)
+  const [note, setNote] = useState(initialIncome?.note ?? initial?.note ?? '')
+  const [showNote, setShowNote] = useState(!!(initialIncome?.note ?? initial?.note))
   const [picked, setPicked] = useState(editing || initial?.recurringId != null)
 
   const cents = evaluateAmount(amount.replace(/[+−,]$/, ''))
   const valid = Number.isFinite(cents) && cents > 0 && !!date
-  const shown = useMemo(() => (picked ? [] : matchSuggestions(suggestions, description, 6)), [picked, suggestions, description])
+  const shown = useMemo(() => (picked || isIncome ? [] : matchSuggestions(suggestions, description, 6)), [picked, isIncome, suggestions, description])
 
+  const submitLabel = editing ? 'Salva modifiche' : isIncome ? 'Aggiungi entrata' : 'Aggiungi spesa'
   const today = todayISO()
   const yesterday = addDays(today, -1)
 
@@ -50,23 +61,67 @@ export function ExpenseForm({ initial, onDone }: { initial?: Partial<Expense>; o
   async function save(e?: React.FormEvent) {
     e?.preventDefault()
     if (!valid) return
+    if (isIncome) return saveIncome()
     const data = {
       amount: cents,
-      categoryId,
+      categoryId: category,
       description: description.trim(),
       date,
       recurringId: initial?.recurringId,
       method,
       note: note.trim() || undefined,
     }
-    if (editing) await db.expenses.update(initial.id!, data)
-    else await db.expenses.add({ ...data, createdAt: Date.now() })
+    if (editing) await db.expenses.update(initial!.id!, data)
+    else {
+      const id = await db.expenses.add({ ...data, createdAt: Date.now() })
+      toast({ text: `Spesa aggiunta · ${formatEur(cents)}`, action: { label: 'Annulla', onClick: () => void db.expenses.delete(id) } })
+    }
     haptic('success')
+    onDone()
+  }
+
+  async function saveIncome() {
+    const data = { amount: cents, description: description.trim(), date, note: note.trim() || undefined }
+    if (initialIncome?.id != null) await db.incomes.update(initialIncome.id, data)
+    else {
+      const id = await db.incomes.add({ ...data, createdAt: Date.now() })
+      toast({ text: `Entrata aggiunta · ${formatEur(cents)}`, action: { label: 'Annulla', onClick: () => void db.incomes.delete(id) } })
+    }
+    haptic('success')
+    onDone()
+  }
+
+  async function removeIncome() {
+    if (initialIncome?.id == null) return
+    const saved = await db.incomes.get(initialIncome.id)
+    await db.incomes.delete(initialIncome.id)
+    haptic('warning')
+    if (saved) toast({ text: 'Entrata eliminata', action: { label: 'Annulla', onClick: () => void db.incomes.add(saved) } })
     onDone()
   }
 
   return (
     <form onSubmit={save} className="space-y-4">
+      {!editing && (
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-fg/5 p-1" role="radiogroup" aria-label="Tipo">
+          {(['expense', 'income'] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={kind === k}
+              onClick={() => {
+                haptic('select')
+                setKind(k)
+              }}
+              className={`relative rounded-xl py-2 text-sm font-semibold transition-colors ${kind === k ? 'text-ink' : 'text-muted'}`}
+            >
+              {kind === k && <motion.span layoutId="kind-pill" className="absolute inset-0 rounded-xl bg-surface shadow-md ring-1 ring-fg/10" transition={{ type: 'spring', stiffness: 500, damping: 35 }} />}
+              <span className="relative">{k === 'expense' ? 'Spesa' : 'Entrata'}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {/* Importo */}
       <div className="relative">
         {touch ? (
@@ -110,7 +165,7 @@ export function ExpenseForm({ initial, onDone }: { initial?: Partial<Expense>; o
       {/* Descrizione + suggerimenti dallo storico */}
       <div>
         <Input
-          placeholder="Descrizione (es. Spesa Esselunga)"
+          placeholder={isIncome ? 'Descrizione (es. Stipendio)' : 'Descrizione (es. Spesa Esselunga)'}
           value={description}
           onChange={(e) => {
             setDescription(e.target.value)
@@ -148,7 +203,7 @@ export function ExpenseForm({ initial, onDone }: { initial?: Partial<Expense>; o
         </AnimatePresence>
       </div>
 
-      <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} compact />
+      {!isIncome && <CategoryPicker categories={categories} value={category} onChange={setCategoryId} compact />}
 
       {/* Data rapida */}
       <div className="flex items-center gap-2">
@@ -169,7 +224,7 @@ export function ExpenseForm({ initial, onDone }: { initial?: Partial<Expense>; o
 
       {/* Metodo di pagamento (opzionale) + nota */}
       <div className="no-scrollbar -mx-6 flex items-center gap-2 overflow-x-auto px-6" data-noswipe>
-        {(Object.keys(PAYMENT_METHODS) as PaymentMethod[]).map((m) => {
+        {!isIncome && (Object.keys(PAYMENT_METHODS) as PaymentMethod[]).map((m) => {
           const Icon = METHOD_ICONS[m]
           return (
             <Pill key={m} active={method === m} onClick={() => setMethod(method === m ? undefined : m)}>
@@ -196,7 +251,12 @@ export function ExpenseForm({ initial, onDone }: { initial?: Partial<Expense>; o
         )}
       </AnimatePresence>
 
-      {editing && (
+      {editing && isIncome && (
+        <Button type="button" variant="danger" className="w-full" onClick={removeIncome}>
+          <Trash2 size={17} /> Elimina entrata
+        </Button>
+      )}
+      {editing && !isIncome && (
         <div className="flex gap-2">
           <Button type="button" variant="danger" className="flex-1" onClick={() => (remove(initial as Expense), onDone())}>
             <Trash2 size={17} /> Elimina
@@ -208,10 +268,10 @@ export function ExpenseForm({ initial, onDone }: { initial?: Partial<Expense>; o
       )}
 
       {touch ? (
-        <Keypad value={amount} onChange={setAmount} onSubmit={() => save()} canSubmit={valid} submitLabel={editing ? 'Salva modifiche' : 'Aggiungi spesa'} />
+        <Keypad value={amount} onChange={setAmount} onSubmit={() => save()} canSubmit={valid} submitLabel={submitLabel} />
       ) : (
         <Button type="submit" disabled={!valid} className="w-full">
-          {editing ? 'Salva modifiche' : 'Aggiungi spesa'}
+          {submitLabel}
         </Button>
       )}
     </form>

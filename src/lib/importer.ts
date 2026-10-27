@@ -237,6 +237,8 @@ export interface ImportRow {
   amount: number | null
   desc: string
   key?: string
+  /** Entrata (stipendio, rimborso): va nelle entrate, non nelle spese */
+  income?: boolean
   /** Motivo per cui la riga non viene importata */
   skip?: string
 }
@@ -270,7 +272,7 @@ export function rowsToImport(
       else if (type && PAYPAL_SKIP.test(type)) item.skip = 'ricarica PayPal'
       if (!item.desc && type) item.desc = type
     } else if (opts.skipPaypalInBank && /paypal/i.test(item.desc)) item.skip = 'pagamento PayPal (dal file PayPal)'
-    if (!item.skip && amount! > 0) item.skip = 'entrata'
+    if (!item.skip && amount! > 0) item.income = true
     if (!item.skip) {
       item.key = importKey(date!, amount!, item.desc)
       if (opts.existingKeys?.has(item.key)) item.skip = 'già importata'

@@ -9,7 +9,7 @@ import { RecurringForm } from './components/RecurringForm'
 import { Sheet } from './components/Sheet'
 import { ToastProvider } from './components/Toast'
 import { useUpcomingBills } from './lib/hooks'
-import type { Expense, Recurring } from './db'
+import type { Expense, Income, Recurring } from './db'
 import { Dashboard } from './pages/Dashboard'
 import { Expenses } from './pages/Expenses'
 import { RecurringPage } from './pages/Recurring'
@@ -25,13 +25,14 @@ export interface AppActions {
   period: Period
   setPeriod: (p: Period) => void
   openExpense: (initial?: Partial<Expense>) => void
+  openIncome: (initial?: Partial<Income>) => void
   openRecurring: (initial?: Partial<Recurring>) => void
   openImport: () => void
   goTo: (tab: TabId) => void
 }
 
 type SheetState =
-  | ({ kind: 'expense'; initial?: Partial<Expense> } | { kind: 'recurring'; initial?: Partial<Recurring> } | { kind: 'import'; initial?: undefined }) & { nonce: number }
+  | ({ kind: 'expense'; initial?: Partial<Expense> } | { kind: 'income'; initial?: Partial<Income> } | { kind: 'recurring'; initial?: Partial<Recurring> } | { kind: 'import'; initial?: undefined }) & { nonce: number }
   | null
 
 export default function App() {
@@ -57,6 +58,10 @@ export default function App() {
     setPeriod,
     openExpense: (initial) => {
       setSheet({ kind: 'expense', initial, nonce: Date.now() })
+      setSheetOpen(true)
+    },
+    openIncome: (initial) => {
+      setSheet({ kind: 'income', initial, nonce: Date.now() })
       setSheetOpen(true)
     },
     openRecurring: (initial) => {
@@ -105,14 +110,15 @@ export default function App() {
             key={tab}
             custom={dir}
             variants={{
-              enter: (d: number) => ({ opacity: 0, x: d * 28, filter: 'blur(4px)' }),
-              center: { opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } },
-              exit: (d: number) => ({ opacity: 0, x: d * -28, filter: 'blur(4px)' }),
+              // Niente blur: sui telefoni costa e rallenta il cambio scheda
+              enter: (d: number) => ({ opacity: 0, x: d * 20 }),
+              center: { opacity: 1, x: 0 },
+              exit: (d: number) => ({ opacity: 0, x: d * -20, transition: { duration: 0.1 } }),
             }}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
             {pages[tab]}
           </motion.div>
@@ -134,7 +140,6 @@ export default function App() {
             aria-label="Aggiungi"
             title="Aggiungi (N)"
           >
-            <span className="absolute inset-0 animate-ping rounded-full bg-violet-500/30 [animation-duration:2.5s]" />
             <Plus size={28} strokeWidth={2.6} className="relative" />
           </motion.button>
         )}
@@ -142,8 +147,13 @@ export default function App() {
 
       <Nav tab={tab} onChange={actions.goTo} badge={upcoming.length} />
 
-      <Sheet open={sheetOpen && sheet?.kind === 'expense'} onClose={close} title={sheet?.initial?.id != null ? 'Modifica spesa' : 'Nuova spesa'}>
+      <Sheet
+        open={sheetOpen && (sheet?.kind === 'expense' || sheet?.kind === 'income')}
+        onClose={close}
+        title={sheet?.initial?.id == null ? 'Nuovo movimento' : sheet.kind === 'income' ? 'Modifica entrata' : 'Modifica spesa'}
+      >
         {sheet?.kind === 'expense' && <ExpenseForm key={sheet.nonce} initial={sheet.initial} onDone={close} />}
+        {sheet?.kind === 'income' && <ExpenseForm key={sheet.nonce} initialIncome={sheet.initial ?? {}} onDone={close} />}
       </Sheet>
       <Sheet open={sheetOpen && sheet?.kind === 'recurring'} onClose={close} title={sheet?.initial?.id != null ? 'Modifica ricorrenza' : 'Nuova ricorrenza'}>
         {sheet?.kind === 'recurring' && <RecurringForm key={sheet.nonce} initial={sheet.initial} onDone={close} />}

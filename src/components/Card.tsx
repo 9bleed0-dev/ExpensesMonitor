@@ -2,12 +2,12 @@ import { motion, type HTMLMotionProps } from 'motion/react'
 
 export const staggerContainer = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+  visible: { transition: { staggerChildren: 0.03 } },
 }
 
 export const fadeUp = {
-  hidden: { opacity: 0, y: 24, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring' as const, stiffness: 260, damping: 26 } },
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 32 } },
 }
 
 export function Card({ className = '', ...props }: HTMLMotionProps<'div'>) {

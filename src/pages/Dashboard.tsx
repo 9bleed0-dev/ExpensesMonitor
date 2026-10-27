@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CalendarDays, Check, Flame, Gauge, ReceiptText, Sparkles, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarDays, Check, Flame, Gauge, ReceiptText, Sparkles, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react'
 import { useMemo } from 'react'
 import type { AppActions } from '../App'
@@ -8,16 +8,14 @@ import { CategoryIcon } from '../components/CategoryIcon'
 import { CumulativeArea, Donut } from '../components/charts'
 import { ExpenseRow } from '../components/ExpenseRow'
 import { PeriodNav, SwipePeriod } from '../components/MonthNav'
-import { ThemeToggle } from '../components/ThemeToggle'
 import { EmptyState, Skeleton } from '../components/ui'
-import { UpcomingBills } from '../components/UpcomingBills'
 import { daysInMonth, formatEur, formatShortDate, MONTHS, shiftMonth, todayISO } from '../lib/format'
-import { byCategory, sumAmounts, toSlices, useBudget, useCategories, useMonthExpenses, useRecurring } from '../lib/hooks'
+import { byCategory, sumAmounts, toSlices, useBudget, useCategories, useMonthExpenses, useMonthIncomes, useRecurring } from '../lib/hooks'
 import { categoryBudgets, categoryChanges, monthStats } from '../lib/insights'
 import { dueItemsForMonth, payDate } from '../lib/recurring'
 import { useTheme } from '../lib/theme'
 
-export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) {
+export function Dashboard({ period, setPeriod, openExpense, openIncome, goTo }: AppActions) {
   const { year, month } = period
   const prev = shiftMonth(period, -1)
   const expenses = useMonthExpenses(year, month)
@@ -27,6 +25,8 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
   const { list: categories, map } = useCategories()
   const { theme } = useTheme()
 
+  const incomes = useMonthIncomes(year, month)
+  const income = sumAmounts(incomes)
   const total = sumAmounts(expenses)
   const prevTotal = sumAmounts(prevExpenses)
   const delta = prevTotal > 0 ? (total - prevTotal) / prevTotal : null
@@ -61,8 +61,6 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
   const { scrollY } = useScroll()
   const barOpacity = useTransform(scrollY, [150, 210], [0, 1])
   const barY = useTransform(scrollY, [150, 210], [-12, 0])
-  const heroScale = useTransform(scrollY, [0, 220], [1, 0.94])
-  const heroOpacity = useTransform(scrollY, [60, 260], [1, 0.55])
 
   const resetPeriod = () => setPeriod({ year: new Date().getFullYear(), month: new Date().getMonth() })
   const loading = expenses === undefined
@@ -92,7 +90,6 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="lg:hidden" />
             <PeriodNav
               label={`${MONTHS[month]} ${year}`}
               ordinal={year * 12 + month}
@@ -104,18 +101,12 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
           </div>
         </header>
 
-        <UpcomingBills openExpense={openExpense} />
-
         <SwipePeriod ordinal={year * 12 + month} onPrev={() => setPeriod(shiftMonth(period, -1))} onNext={() => setPeriod(shiftMonth(period, 1))}>
           <div className="grid gap-4 md:grid-cols-5">
             {/* Hero */}
-            <motion.div className="min-w-0 md:col-span-3" style={{ scale: heroScale, opacity: heroOpacity, transformOrigin: 'top center' }}>
+            <div className="min-w-0 md:order-1 md:col-span-3">
             <Card className="relative h-full overflow-hidden">
-              <motion.div
-                className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-violet-500/25 blur-3xl light:bg-violet-400/25"
-                animate={{ scale: [1, 1.15, 1], opacity: [0.8, 1, 0.8] }}
-                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-              />
+              <div className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-violet-500/25 blur-3xl light:bg-violet-400/25" />
               <p className="relative text-sm font-medium text-ink-soft">Speso a {MONTHS[month].toLowerCase()}</p>
               <div className="relative mt-1 text-5xl font-extrabold tracking-tight sm:text-6xl">
                 {loading ? <Skeleton className="h-14 w-56" /> : <AnimatedNumber value={total} />}
@@ -166,7 +157,9 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
                 </div>
               )}
 
-              <div className="relative mt-5 grid grid-cols-2 gap-3 border-t border-fg/10 pt-4">
+              <IncomeRow income={income} total={total} onAdd={() => openIncome()} onOpen={() => goTo('expenses')} />
+
+              <div className="relative mt-4 grid grid-cols-2 gap-3 border-t border-fg/10 pt-4">
                 <MiniStat icon={CalendarDays} label="Media al giorno" value={stats.dailyAvg} />
                 {stats.projection != null ? (
                   <MiniStat icon={Gauge} label="Stima fine mese" value={stats.projection} warn={budget > 0 && stats.projection > budget} />
@@ -175,11 +168,11 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
                 )}
               </div>
             </Card>
-            </motion.div>
+            </div>
 
             {/* Scadenze */}
-            <Card className="md:col-span-2">
-              <SectionTitle action={<LinkBtn onClick={() => goTo('recurring')}>Tutte</LinkBtn>}>Scadenze del mese</SectionTitle>
+            <Card className="md:order-2 md:col-span-2">
+              <SectionTitle action={<LinkBtn onClick={() => goTo('recurring')}>Tutte</LinkBtn>}>Bollette del mese</SectionTitle>
               {due.length === 0 ? (
                 <EmptyState icon={<ReceiptText size={22} />} text="Nessuna bolletta in scadenza. Aggiungile dalla sezione Bollette." />
               ) : (
@@ -195,7 +188,7 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
                           <div className="min-w-0 flex-1">
                             <div className={`truncate text-sm font-semibold ${paid ? 'text-faint line-through' : ''}`}>{r.name}</div>
                             <div className={`text-xs ${!paid && dueDate < todayISO() ? 'text-bad' : 'text-muted'}`}>
-                              {paid ? `Pagata ${formatEur(paid.amount)}` : `Scade ${formatShortDate(dueDate)} · ${formatEur(r.amount)}`}
+                              {paid ? `Pagata ${formatEur(paid.amount)}` : `${dueDate < todayISO() ? 'Scaduta il' : 'Scade il'} ${formatShortDate(dueDate)} · ${formatEur(r.amount)}`}
                             </div>
                           </div>
                           {paid ? (
@@ -220,7 +213,7 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
             </Card>
 
             {/* Categorie */}
-            <Card className="md:col-span-3">
+            <Card className="md:order-3 md:col-span-3">
               <SectionTitle>Per categoria</SectionTitle>
               <div className="flex flex-col items-center gap-6 sm:flex-row md:flex-col xl:flex-row">
                 <Donut data={slices} total={total} />
@@ -262,27 +255,8 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
               </div>
             </Card>
 
-            {/* Andamento */}
-            <Card className="md:col-span-2">
-              <SectionTitle
-                action={
-                  stats.projection != null && total > 0 ? (
-                    <span className="flex items-center gap-1.5 text-[11px] text-muted">
-                      <span className="w-4 border-t-2 border-dashed border-current" /> stima
-                    </span>
-                  ) : undefined
-                }
-              >
-                Andamento del mese
-              </SectionTitle>
-              {total > 0 ? <CumulativeArea data={cumulative} budget={budget || undefined} /> : <EmptyState icon={<TrendingUp size={22} />} text="Il grafico apparirà con le prime spese." />}
-            </Card>
-
-            {/* Approfondimenti */}
-            <Insights expenses={expenses ?? []} prevExpenses={prevExpenses ?? []} prevMonth={prev.month} stats={stats} budgets={budgets} map={map} />
-
             {/* Recenti */}
-            <Card className="md:col-span-3">
+            <Card className="md:order-5 md:col-span-3">
               <SectionTitle action={<LinkBtn onClick={() => goTo('expenses')}>Vedi tutte</LinkBtn>}>Ultime spese</SectionTitle>
               {loading ? (
                 <div className="space-y-3">
@@ -303,6 +277,25 @@ export function Dashboard({ period, setPeriod, openExpense, goTo }: AppActions) 
                 <EmptyState icon={<ReceiptText size={22} />} title="Nessuna spesa" text="Tocca + per aggiungere la prima spesa del mese." />
               )}
             </Card>
+            {/* Andamento */}
+            <Card className="md:order-4 md:col-span-2">
+              <SectionTitle
+                action={
+                  stats.projection != null && total > 0 ? (
+                    <span className="flex items-center gap-1.5 text-[11px] text-muted">
+                      <span className="w-4 border-t-2 border-dashed border-current" /> stima
+                    </span>
+                  ) : undefined
+                }
+              >
+                Andamento del mese
+              </SectionTitle>
+              {total > 0 ? <CumulativeArea data={cumulative} budget={budget || undefined} /> : <EmptyState icon={<TrendingUp size={22} />} text="Il grafico apparirà con le prime spese." />}
+            </Card>
+
+            {/* Approfondimenti */}
+            <Insights expenses={expenses ?? []} prevExpenses={prevExpenses ?? []} prevMonth={prev.month} stats={stats} budgets={budgets} map={map} />
+
           </div>
         </SwipePeriod>
       </motion.div>
@@ -344,7 +337,7 @@ function Insights({
           key: 'up',
           icon: TrendingUp,
           tone: 'bad',
-          text: <><b>{up.category?.name ?? 'Altro'}</b> +{formatEur(up.diff)}{up.previous > 0 ? ` (+${Math.round((up.diff / up.previous) * 100)}%)` : ''} rispetto a {prevName}</>,
+          text: <><b>{up.category?.name ?? 'Altro'}</b> +{formatEur(up.diff)}{up.previous >= 2000 && up.diff / up.previous <= 3 ? ` (+${Math.round((up.diff / up.previous) * 100)}%)` : ''} rispetto a {prevName}</>,
         })
       if (down && down.diff < 0)
         out.push({ key: 'down', icon: TrendingDown, tone: 'good', text: <><b>{down.category?.name ?? 'Altro'}</b> −{formatEur(-down.diff)} rispetto a {prevName}</> })
@@ -359,7 +352,7 @@ function Insights({
   const tones = { bad: 'bg-bad/15 text-bad', good: 'bg-good/15 text-good', warn: 'bg-warn/15 text-warn', neutral: 'bg-accent/15 text-accent' }
 
   return (
-    <Card className="md:col-span-2">
+    <Card className="md:order-6 md:col-span-2">
       <SectionTitle>Approfondimenti</SectionTitle>
       {items.length === 0 ? (
         <EmptyState icon={<Sparkles size={22} />} text="Qui compariranno confronti e consigli man mano che registri le spese." />
@@ -411,4 +404,29 @@ export function LinkBtn({ onClick, children }: { onClick: () => void; children: 
 function greeting() {
   const h = new Date().getHours()
   return h < 12 ? 'Buongiorno 👋' : h < 18 ? 'Buon pomeriggio 👋' : 'Buonasera 👋'
+}
+
+/** Entrate e saldo del mese; senza entrate, un invito discreto ad aggiungerle */
+function IncomeRow({ income, total, onAdd, onOpen }: { income: number; total: number; onAdd: () => void; onOpen: () => void }) {
+  if (income <= 0)
+    return (
+      <button onClick={onAdd} className="relative mt-4 flex items-center gap-1.5 text-xs font-semibold text-accent">
+        <Wallet size={14} /> Aggiungi lo stipendio per vedere quanto ti resta
+      </button>
+    )
+  const balance = income - total
+  return (
+    <button onClick={onOpen} className="relative mt-4 grid w-full grid-cols-2 gap-3 rounded-2xl bg-fg/5 p-3 text-left">
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5 text-xs text-muted">
+          <Wallet size={13} /> Entrate
+        </span>
+        <span className="tabular mt-0.5 block truncate text-lg font-bold">{formatEur(income)}</span>
+      </span>
+      <span className="min-w-0">
+        <span className="text-xs text-muted">{balance >= 0 ? 'Ti restano' : 'Sei sotto di'}</span>
+        <span className={`tabular mt-0.5 block truncate text-lg font-bold ${balance >= 0 ? 'text-good' : 'text-bad'}`}>{formatEur(Math.abs(balance))}</span>
+      </span>
+    </button>
+  )
 }
